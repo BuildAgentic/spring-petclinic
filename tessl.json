@@ -1,0 +1,292 @@
+{
+  "name": "tessl-test-99/spring-petclinic",
+  "dependencies": {},
+  "actions": {
+    "follow-ticket-changes": {
+      "tags": [
+        "Ticket to PR"
+      ],
+      "agent": "claude",
+      "model": "claude-haiku-4-5",
+      "skill": "tessl/factory#follow-ticket-changes"
+    },
+    "implement": {
+      "tags": [
+        "Ticket to PR"
+      ],
+      "agent": "claude",
+      "model": "claude-opus-5-5",
+      "skill": "tessl/factory#implement-linear",
+      "concurrency": {
+        "keys": [
+          {
+            "key": "implement:linear-issue:{{ inputs.LINEAR_ISSUE_IDENTIFIER }}",
+            "limit": 1
+          }
+        ]
+      }
+    },
+    "shepherd": {
+      "tags": [
+        "Ticket to PR"
+      ],
+      "agent": "claude",
+      "model": "claude-opus-5-5",
+      "skill": "tessl/factory#shepherd",
+      "concurrency": {
+        "keys": [
+          {
+            "key": "github:pr:{{ inputs.GITHUB_REPOSITORY }}:{{ inputs.GITHUB_PR_NUMBER }}",
+            "limit": 1
+          }
+        ],
+        "debounce": "90s"
+      },
+      "environment": "spring-petclinic-shepherd"
+    }
+  },
+  "triggers": {
+    "issue-taken-back": {
+      "on": [
+        "linear:Issue.update"
+      ],
+      "when": {
+        "event.actor.id": {
+          "not": {
+            "equals": "{{ linear.tesslApp.userId }}"
+          }
+        },
+        "event.data.delegateId": "{{ linear.tesslApp.userId }}",
+        "event.data.state.type": {
+          "in": [
+            "backlog",
+            "triage"
+          ]
+        },
+        "event.updatedFrom.stateId": {
+          "exists": true
+        }
+      },
+      "action": {
+        "use": "follow-ticket-changes",
+        "inputs": {
+          "TICKET_CHANGE": "taken-back",
+          "LINEAR_ISSUE_IDENTIFIER": "{{ event.data.identifier }}"
+        }
+      },
+      "concurrency": {
+        "keys": [
+          {
+            "key": "follow-ticket-changes:linear-issue:{{ inputs.LINEAR_ISSUE_IDENTIFIER }}",
+            "limit": 1
+          }
+        ]
+      }
+    },
+    "issue-ended": {
+      "on": [
+        "linear:Issue.update"
+      ],
+      "when": {
+        "event.actor.id": {
+          "not": {
+            "equals": "{{ linear.tesslApp.userId }}"
+          }
+        },
+        "event.data.delegateId": "{{ linear.tesslApp.userId }}",
+        "event.data.state.type": {
+          "in": [
+            "completed",
+            "canceled",
+            "duplicate"
+          ]
+        },
+        "event.updatedFrom.stateId": {
+          "exists": true
+        }
+      },
+      "action": {
+        "use": "follow-ticket-changes",
+        "inputs": {
+          "TICKET_CHANGE": "issue-ended",
+          "LINEAR_ISSUE_IDENTIFIER": "{{ event.data.identifier }}"
+        }
+      },
+      "concurrency": {
+        "keys": [
+          {
+            "key": "follow-ticket-changes:linear-issue:{{ inputs.LINEAR_ISSUE_IDENTIFIER }}",
+            "limit": 1
+          }
+        ]
+      }
+    },
+    "session-replied": {
+      "on": [
+        "linear:AgentSessionEvent.prompted"
+      ],
+      "when": {
+        "event.appUserId": "{{ linear.tesslApp.userId }}",
+        "event.agentActivity.signal": {
+          "not": {
+            "equals": "stop"
+          }
+        }
+      },
+      "action": {
+        "use": "follow-ticket-changes",
+        "inputs": {
+          "TICKET_CHANGE": "replied",
+          "LINEAR_ISSUE_IDENTIFIER": "{{ event.agentSession.issue.identifier }}"
+        }
+      },
+      "concurrency": {
+        "keys": [
+          {
+            "key": "implement:linear-issue:{{ inputs.LINEAR_ISSUE_IDENTIFIER }}",
+            "limit": 1
+          }
+        ]
+      }
+    },
+    "pr-closed": {
+      "on": [
+        "github:pull_request.closed"
+      ],
+      "when": {
+        "event.sender.id": {
+          "in": [
+            55069012
+          ]
+        },
+        "event.pull_request.head.ref": {
+          "matches": "^tessl/"
+        },
+        "event.pull_request.labels.*.name": {
+          "any": {
+            "equals": "tessl"
+          }
+        }
+      },
+      "action": {
+        "use": "follow-ticket-changes",
+        "inputs": {
+          "TICKET_CHANGE": "pr-closed",
+          "GITHUB_PR_NUMBER": "{{ event.pull_request.number }}"
+        }
+      },
+      "concurrency": {
+        "keys": [
+          {
+            "key": "follow-ticket-changes:github-pr:{{ event.repository.full_name }}:{{ inputs.GITHUB_PR_NUMBER }}",
+            "limit": 1
+          }
+        ]
+      }
+    },
+    "issue-delegated": {
+      "on": [
+        "linear:Issue.create",
+        "linear:Issue.update"
+      ],
+      "when": {
+        "event.data.delegateId": "{{ linear.tesslApp.userId }}",
+        "event.data.state.type": "unstarted"
+      },
+      "action": {
+        "use": "implement",
+        "inputs": {
+          "LINEAR_ISSUE_IDENTIFIER": "{{ event.data.identifier }}"
+        }
+      },
+      "concurrency": {
+        "debounce": "10s"
+      }
+    },
+    "pr-review": {
+      "on": [
+        "github:pull_request_review.submitted"
+      ],
+      "when": {
+        "event.sender.id": {
+          "in": [
+            55069012
+          ]
+        },
+        "event.pull_request.state": "open",
+        "event.pull_request.head.ref": {
+          "matches": "^tessl/"
+        },
+        "event.pull_request.head.repo.id": 1470847614,
+        "event.pull_request.labels.*.name": {
+          "any": {
+            "equals": "tessl"
+          }
+        }
+      },
+      "action": {
+        "use": "shepherd",
+        "inputs": {
+          "GITHUB_PR_NUMBER": "{{ event.pull_request.number }}",
+          "GITHUB_REPOSITORY": "{{ event.repository.full_name }}"
+        }
+      }
+    },
+    "pr-review-comment": {
+      "on": [
+        "github:pull_request_review_comment.created"
+      ],
+      "when": {
+        "event.sender.id": {
+          "in": [
+            55069012
+          ]
+        },
+        "event.pull_request.state": "open",
+        "event.pull_request.head.ref": {
+          "matches": "^tessl/"
+        },
+        "event.pull_request.head.repo.id": 1470847614,
+        "event.pull_request.labels.*.name": {
+          "any": {
+            "equals": "tessl"
+          }
+        }
+      },
+      "action": {
+        "use": "shepherd",
+        "inputs": {
+          "GITHUB_PR_NUMBER": "{{ event.pull_request.number }}",
+          "GITHUB_REPOSITORY": "{{ event.repository.full_name }}"
+        }
+      }
+    },
+    "pr-comment": {
+      "on": [
+        "github:issue_comment.created"
+      ],
+      "when": {
+        "isPullRequest": "true",
+        "event.sender.id": {
+          "in": [
+            55069012
+          ]
+        },
+        "event.issue.state": "open",
+        "event.issue.labels.*.name": {
+          "any": {
+            "equals": "tessl"
+          }
+        }
+      },
+      "action": {
+        "use": "shepherd",
+        "inputs": {
+          "GITHUB_PR_NUMBER": "{{ event.issue.number }}",
+          "GITHUB_REPOSITORY": "{{ event.repository.full_name }}"
+        }
+      }
+    }
+  },
+  "environment": "spring-petclinic-env"
+}
