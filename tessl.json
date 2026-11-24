@@ -1,6 +1,17 @@
 {
   "name": "tessl-test-99/spring-petclinic",
-  "dependencies": {},
+  "dependencies": {
+    "snyk/studio-recipes": {
+      "version": "3752dd05a462184dcce44af3c247f287b41e35de",
+      "source": "https://github.com/snyk/studio-recipes",
+      "include": {
+        "skills": [
+          "snyk-fix"
+        ]
+      }
+    }
+  },
+  "environment": "spring-petclinic-env",
   "actions": {
     "follow-ticket-changes": {
       "tags": [
@@ -287,6 +298,5 @@
         }
       }
     }
-  },
-  "environment": "spring-petclinic-env"
+  }
 }
