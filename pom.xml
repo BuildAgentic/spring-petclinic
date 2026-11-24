@@ -24,10 +24,18 @@
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
     <!-- Web dependencies -->
-    <webjars-bootstrap.version>3.3.6</webjars-bootstrap.version>
-    <webjars-jquery-ui.version>1.11.4</webjars-jquery-ui.version>
-    <webjars-jquery.version>2.2.4</webjars-jquery.version>
+    <webjars-bootstrap.version>3.4.1</webjars-bootstrap.version>
+    <webjars-jquery-ui.version>1.13.3</webjars-jquery-ui.version>
+    <webjars-jquery.version>3.7.1</webjars-jquery.version>
     <wro4j.version>2.1.1</wro4j.version>
+
+    <!-- Overrides of Spring Boot managed versions, to pick up security fixes (Snyk) -->
+    <tomcat.version>10.1.62</tomcat.version>
+    <jackson-bom.version>2.21.9</jackson-bom.version>
+    <logback.version>1.6.8</logback.version>
+    <log4j2.version>2.25.5</log4j2.version>
+    <micrometer.version>1.16.9</micrometer.version>
+    <hibernate-validator.version>8.0.6.Final</hibernate-validator.version>
 
     <jacoco.version>0.8.16</jacoco.version>
 

@@ -15,9 +15,12 @@
  */
 package org.springframework.samples.petclinic.vet;
 
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ResponseBody;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.Map;
 
@@ -47,12 +50,16 @@ class VetController {
     }
 
     @GetMapping({ "/vets.json", "/vets.xml" })
-    public @ResponseBody Vets showResourcesVetList() {
+    public ResponseEntity<Vets> showResourcesVetList(HttpServletRequest request) {
         // Here we are returning an object of type 'Vets' rather than a collection of Vet
         // objects so it is simpler for JSon/Object mapping
         Vets vets = new Vets();
         vets.getVetList().addAll(this.vets.findAll());
-        return vets;
+        // The extension picks the format, as path extension content negotiation did
+        // before Spring Framework 6 removed it
+        MediaType type = request.getRequestURI().endsWith(".xml") ? MediaType.APPLICATION_XML
+                : MediaType.APPLICATION_JSON;
+        return ResponseEntity.ok().contentType(type).body(vets);
     }
 
 }
